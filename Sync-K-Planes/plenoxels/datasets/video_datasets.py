@@ -200,7 +200,7 @@ class Video360Dataset(BaseDataset):
                 self.cam_nums = cam_nums
                 self.per_cam_near_fars = torch.tensor(
                         # [[2.0, 6.0]]).repeat(per_cam_poses.shape[0], 1)
-                        [[0.1, 6.0]]).repeat(per_cam_poses.shape[0], 1)
+                        [[0.4, 6.0]]).repeat(per_cam_poses.shape[0], 1)
             # Normalize timestamps between -1, 1
             self.num_frames = torch.max(timestamps).item() + 1
             print(f"Number of frames: {self.num_frames}")

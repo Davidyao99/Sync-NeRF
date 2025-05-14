@@ -111,10 +111,10 @@ def main():
     data = load_data(model_type, validate_only=validate_only, render_only=render_only or spacetime_only, **config)
     config.update(data)
     trainer = init_trainer(model_type, **config)
-    if render_only is not None:
-        checkpoint_path = os.path.join(config["logdir"], config["expname"], "model.pth")
-        training_needed = not (validate_only or render_only or spacetime_only)
-        trainer.load_model(torch.load(checkpoint_path), training_needed=training_needed)
+    # if render_only is not None:
+    #     checkpoint_path = os.path.join(config["logdir"], config["expname"], "model.pth")
+    #     training_needed = not (validate_only or render_only or spacetime_only)
+    #     trainer.load_model(torch.load(checkpoint_path), training_needed=training_needed)
 
     if validate_only:
         trainer.validate()
