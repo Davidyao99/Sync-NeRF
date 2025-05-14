@@ -156,4 +156,9 @@ def parallel_load_images(tqdm_title,
         out = next(iterator)
         if out is not None:
             outputs.append(out)
+    # outputs = []
+    # for i in range(num_images):
+    #     out = fn({"idx": i, **kwargs})
+    #     if out is not None:
+    #         outputs.append(out)
     return outputs

@@ -102,7 +102,9 @@ class BaseTrainer(abc.ABC):
         scale = self.gscaler.get_scale()
         self.gscaler.update()
         self.timer.check("scaler-step")
-        self.offset_log.write(f'{fwd_out["offset"].detach().cpu().numpy()}\n')
+        offsets = fwd_out["offset"].detach().cpu().numpy() / (self.train_data_loader.dataset.normalize_scale * 2)
+        offsets = offsets * (self.train_data_loader.dataset.num_frames - 1)
+        self.offset_log.write(f'{offsets}\n')
 
         # Report on losses
         if self.global_step % self.calc_metrics_every == 0:
@@ -113,7 +115,7 @@ class BaseTrainer(abc.ABC):
                 for r in self.regularizers:
                     r.report(self.loss_info)
 
-        return scale <= self.gscaler.get_scale()
+        return scale <= self.gscaler.get_scale(), offsets
 
     def post_step(self, progress_bar):
         self.model.step_after_iter(self.global_step)
@@ -154,6 +156,7 @@ class BaseTrainer(abc.ABC):
 
         pb = tqdm(initial=self.global_step, total=self.num_steps)
         self.offset_log = open(f'{self.log_dir}/cam_offset.txt', 'w')
+        final_offset = None
         try:
             self.pre_epoch()
             batch_iter = iter(self.train_data_loader)
@@ -172,7 +175,7 @@ class BaseTrainer(abc.ABC):
                     log.info("Reset data-iterator")
 
                 try:
-                    step_successful = self.train_step(data)
+                    step_successful, final_offset = self.train_step(data)
                 except StopIteration:
                     self.pre_epoch()
                     batch_iter = iter(self.train_data_loader)
@@ -188,6 +191,10 @@ class BaseTrainer(abc.ABC):
         finally:
             pb.close()
             self.writer.close()
+
+        np.save(os.path.join(self.log_dir, "cam_offset.npy"), final_offset)
+        
+
 
     def _move_data_to_device(self, data):
         data["rays_o"] = data["rays_o"].to(self.device)
@@ -243,10 +250,11 @@ class BaseTrainer(abc.ABC):
                          img_idx: int,
                          name: Optional[str] = None,
                          save_outputs: bool = True) -> Tuple[dict, np.ndarray, Optional[np.ndarray]]:
-        if isinstance(dset.img_h, int):
+        if isinstance(dset.img_h, int) or isinstance(dset.img_h, np.int64):
             img_h, img_w = dset.img_h, dset.img_w
         else:
             img_h, img_w = dset.img_h[img_idx], dset.img_w[img_idx]
+        img_h, img_w = dset.img_h, dset.img_w
         preds_rgb = (
             preds["rgb"]
             .reshape(img_h, img_w, 3)

@@ -44,7 +44,8 @@ class Video360Dataset(BaseDataset):
                  hold_id = 0,
                  ndc_far: float = 2.6,
                  normalize_scale: float = 0.8,
-                 num_frames: int = 300):
+                 num_frames: int = 300,
+                 video: Optional[str] = None,):
         self.keyframes = keyframes
         self.max_cameras = max_cameras
         self.max_tsteps = max_tsteps
@@ -61,11 +62,12 @@ class Video360Dataset(BaseDataset):
         self.median_imgs = None
         self.normalize_scale = normalize_scale
         self.num_frames = num_frames
+        self.video = video
         if contraction and ndc:
             raise ValueError("Options 'contraction' and 'ndc' are exclusive.")
         if "lego" in datadir or "dnerf" in datadir:
             dset_type = "synthetic"
-        elif "fox" in datadir or "box" in datadir or "deer" in datadir or "blender" in datadir:
+        elif "fox" in datadir or "box" in datadir or "deer" in datadir or "blender" in datadir or "data_preprocessed" in datadir:
             dset_type = "blender"
         else:
             dset_type = "llff"
@@ -104,9 +106,7 @@ class Video360Dataset(BaseDataset):
                 else:
                     self.per_cam_near_fars = torch.tensor(
                         [[0.0, self.ndc_far]]).repeat(per_cam_near_fars.shape[0], 1)
-                self.cam_nums = cam_nums
-
-                
+                self.cam_nums = cam_nums 
 
             # These values are tuned for the salmon video
             self.global_translation = torch.tensor([0, 0, 2.])
@@ -140,6 +140,7 @@ class Video360Dataset(BaseDataset):
                 timestamps = torch.tensor(
                     [fetch_360vid_info(f)[0] for f in frames], dtype=torch.float32)
                 img_h, img_w = imgs[0].shape[:2]
+                
             if ndc:
                 self.per_cam_near_fars = torch.tensor([[0.0, self.ndc_far]])
             else:
@@ -154,14 +155,25 @@ class Video360Dataset(BaseDataset):
                 transform, img_h=img_h, img_w=img_w, downsample=self.downsample)
         elif dset_type == "blender":
             if split == "render":
-                assert ndc, "Unable to generate render poses without ndc: don't know near-far."
-                per_cam_poses, per_cam_near_fars, intrinsics, _ = load_llffvideo_poses(
-                    datadir, downsample=self.downsample, split='all', near_scaling=self.near_scaling)
+                # assert ndc, "Unable to generate render poses without ndc: don't know near-far."
+                # per_cam_poses, per_cam_near_fars, intrinsics, _ = load_llffvideo_poses(
+                #     datadir, downsample=self.downsample, split='all', near_scaling=self.near_scaling)
+                
+                per_cam_poses, intrinsics, videopaths, cam_nums = load_blendervideo_poses_custom(
+                        datadir, downsample=self.downsample, split=split,hold_id=hold_id, near_scaling=self.near_scaling, video=self.video)
+                self.per_cam_near_fars = torch.tensor(
+                        # [[2.0, 6.0]]).repeat(per_cam_poses.shape[0], 1)
+                        [[0.1, 6.0]]).repeat(per_cam_poses.shape[0], 1)
+                per_cam_poses = per_cam_poses[:, :3]
                 render_poses = generate_spiral_path(
-                    per_cam_poses.numpy(), per_cam_near_fars.numpy(), n_frames=300,
+                    per_cam_poses.numpy(), self.per_cam_near_fars.numpy(), n_frames=300,
                     n_rots=2, zrate=0.5, dt=self.near_scaling, percentile=60)
                 self.poses = torch.from_numpy(render_poses).float()
-                self.per_cam_near_fars = torch.tensor([[0.4, self.ndc_far]])
+                # self.per_cam_near_fars = torch.tensor([[0.4, self.ndc_far]])
+                self.cam_nums = cam_nums
+                self.per_cam_near_fars = torch.tensor(
+                        # [[2.0, 6.0]]).repeat(per_cam_poses.shape[0], 1)
+                        [[0.1, 6.0]]).repeat(1, 1)
                 timestamps = torch.linspace(0, 299, len(self.poses))
                 imgs = None
             else:
@@ -169,19 +181,26 @@ class Video360Dataset(BaseDataset):
                     per_cam_poses, intrinsics, videopaths, cam_nums = load_blendervideo_poses_testoptim(
                         datadir, downsample=self.downsample, split=split,hold_id=hold_id, near_scaling=self.near_scaling)
                 else:
-                    per_cam_poses, intrinsics, videopaths, cam_nums = load_blendervideo_poses(
-                        datadir, downsample=self.downsample, split=split,hold_id=hold_id, near_scaling=self.near_scaling)
+                    per_cam_poses, intrinsics, videopaths, cam_nums = load_blendervideo_poses_custom(
+                        datadir, downsample=self.downsample, split=split,hold_id=hold_id, near_scaling=self.near_scaling, video=self.video)
+                    # breakpoint()
+                    # per_cam_poses, intrinsics, videopaths, cam_nums = load_blendervideo_poses(
+                    #     datadir, downsample=self.downsample, split=split,hold_id=hold_id, near_scaling=self.near_scaling)
 
                     if split == 'test':
                         keyframes = False
                 poses, imgs, timestamps, self.median_imgs = load_llffvideo_data(
                     videopaths=videopaths, cam_poses=per_cam_poses, intrinsics=intrinsics,
                     split=split, keyframes=keyframes, keyframes_take_each=30)
+                
                 self.poses = poses.float()
                 self.cam_nums = cam_nums
                 self.per_cam_near_fars = torch.tensor(
-                        [[2.0, 6.0]]).repeat(per_cam_poses.shape[0], 1)
+                        # [[2.0, 6.0]]).repeat(per_cam_poses.shape[0], 1)
+                        [[0.1, 6.0]]).repeat(per_cam_poses.shape[0], 1)
             # Normalize timestamps between -1, 1
+            self.num_frames = torch.max(timestamps).item() + 1
+            print(f"Number of frames: {self.num_frames}")
             timestamps = (timestamps.float() / (self.num_frames-1)) * 2 - 1
         else:
             raise ValueError(datadir)
@@ -189,7 +208,7 @@ class Video360Dataset(BaseDataset):
         self.timestamps = timestamps * self.normalize_scale
         if split in ['train', 'test_optim']:
             self.timestamps = self.timestamps[:, None, None].repeat(
-                1, intrinsics.height, intrinsics.width).reshape(-1)  # [n_frames * h * w]
+                1, intrinsics[0].height, intrinsics[0].width).reshape(-1)  # [n_frames * h * w]
 
         assert self.timestamps.min() >= -self.normalize_scale and self.timestamps.max() <= self.normalize_scale, "timestamps out of range."
         if imgs is not None and imgs.dtype != torch.uint8:
@@ -199,7 +218,7 @@ class Video360Dataset(BaseDataset):
         if split in ['train', 'test_optim']:
             imgs = imgs.view(-1, imgs.shape[-1])
         elif imgs is not None:
-            imgs = imgs.view(-1, intrinsics.height * intrinsics.width, imgs.shape[-1])
+            imgs = imgs.view(-1, intrinsics[0].height * intrinsics[0].width, imgs.shape[-1])
 
         # ISG/IST weights are computed on 4x subsampled data.
         weights_subsampled = int(4 / downsample)
@@ -224,7 +243,7 @@ class Video360Dataset(BaseDataset):
 
         self.isg_weights = None
         self.ist_weights = None
-        if split == "train" and dset_type == 'llff':  # Only use importance sampling with DyNeRF videos
+        if split == "train" and (dset_type == 'llff'):  # Only use importance sampling with DyNeRF videos
             if os.path.exists(os.path.join(datadir, f"isg_weights.pt")):
                 self.isg_weights = torch.load(os.path.join(datadir, f"isg_weights.pt"))
                 log.info(f"Reloaded {self.isg_weights.shape[0]} ISG weights from file.")
@@ -256,7 +275,7 @@ class Video360Dataset(BaseDataset):
                 t_e = time.time()
                 log.info(f"Computed {self.ist_weights.shape[0]} IST weights in {t_e - t_s:.2f}s.")
 
-        if split == "test_optim" and dset_type == 'llff':  # Only use importance sampling with DyNeRF videos
+        if split == "test_optim" and (dset_type == 'llff'):  # Only use importance sampling with DyNeRF videos
             if os.path.exists(os.path.join(datadir, f"isg_testoptim_weights.pt")):
                 self.isg_weights = torch.load(os.path.join(datadir, f"isg_testoptim_weights.pt"))
                 log.info(f"Reloaded {self.isg_weights.shape[0]} ISG test optim weights from file.")
@@ -312,8 +331,8 @@ class Video360Dataset(BaseDataset):
         log.info(f"Switched from ISG to IST weights.")
 
     def __getitem__(self, index):
-        h = self.intrinsics.height
-        w = self.intrinsics.width
+        h = self.intrinsics[0].height
+        w = self.intrinsics[0].width
         dev = "cpu"
 
         if self.split in ['train', 'test_optim']:
@@ -355,6 +374,7 @@ class Video360Dataset(BaseDataset):
             "timestamps": self.timestamps[index],      # (num_rays or 1, )
             "imgs": None,
         }
+
         if self.split in ['train', 'test_optim']:
             num_frames_per_camera = len(self.imgs) // (len(self.per_cam_near_fars) * h * w)
             camera_id = torch.div(image_id, num_frames_per_camera, rounding_mode='floor')  # (num_rays)
@@ -368,6 +388,7 @@ class Video360Dataset(BaseDataset):
             out['imgs'] = (self.imgs[index] / 255.0).view(-1, self.imgs.shape[-1])
 
         c2w = self.poses[image_id]                                    # [num_rays or 1, 3, 4]
+        all_intrinsics = self.intrinsics[camera_id.long() + 1]
         camera_dirs = stack_camera_dirs(x, y, self.intrinsics, True)  # [num_rays, 3]
         out['rays_o'], out['rays_d'] = get_rays(
             camera_dirs, c2w, ndc=self.is_ndc, ndc_near=1.0, intrinsics=self.intrinsics,
@@ -568,8 +589,8 @@ def load_llffvideo_data(videopaths: List[str],
         num_images=len(videopaths),
         paths=videopaths,
         poses=cam_poses,
-        out_h=intrinsics.height,
-        out_w=intrinsics.width,
+        out_h=intrinsics[0].height,
+        out_w=intrinsics[0].width,
         load_every=keyframes_take_each if keyframes else 1,
     )
     imgs, poses, median_imgs, timestamps = zip(*loaded)
@@ -580,6 +601,113 @@ def load_llffvideo_data(videopaths: List[str],
     median_imgs = torch.stack(median_imgs, 0)  # [num_cameras, h, w, 3]
 
     return poses, imgs, timestamps, median_imgs
+
+def load_blendervideo_poses_custom(datadir: str,
+                         downsample: float,
+                         split: str,
+                         hold_id:0,
+                         video: str,
+                         near_scaling: float) -> Tuple[
+                            torch.Tensor, torch.Tensor, Intrinsics, List[str]]:
+    """Load poses and metadata for LLFF video.
+
+    Args:
+        datadir (str): Directory containing the videos and pose information
+        downsample (float): How much to downsample videos. The default for LLFF videos is 2.0
+        split (str): 'train' or 'test'.
+        hold_id: Default is 0(test cam), change hold_id to render train view
+        near_scaling (float): How much to scale the near bound of poses.
+
+    Returns:
+        Tensor: A tensor of size [N, 4, 4] containing c2w poses for each camera.
+        Intrinsics: The camera intrinsics. These are the same for every camera.
+        List[str]: List of length N containing the path to each camera's data.
+    """
+    #poses, intrinsics = load_llff_poses_helper(datadir, downsample, near_scaling)
+
+    dir_paths = sorted([x for x in os.listdir(datadir) if video in x])
+    # dir_paths.insert(0, dir_paths[0])
+
+    # intrinsics = []
+    # videopaths = []
+    # poses = []
+
+    # for dir_path in dir_paths:
+
+    #     c2w= os.path.join(datadir, dir_path, "c2w_centered.npy")
+    #     intrinsic = os.path.join(datadir, dir_path, "K_syncnerf.npy")
+    #     video_path = os.path.join(datadir, dir_path, "video_frames.mp4")
+    #     img_dim_path = os.path.join(datadir, dir_path, "image_dims.npy")
+
+    #     videopaths.append(video_path)
+    #     intrinsics.append(np.load(intrinsic))
+    #     poses.append(np.load(c2w))
+
+    # intrinsics = np.stack(intrinsics)
+    # poses = np.stack(poses)
+
+    # poses = poses[:,0]
+    # intrinsics = intrinsics[0]
+
+    # fx = intrinsics[0, 0]
+    # fy = intrinsics[1, 1]
+    # cx = intrinsics[0, 2]
+    # cy = intrinsics[1, 2]
+
+    # dim = np.load(img_dim_path)
+
+    # intrinsics = Intrinsics(height=dim[1], width=dim[0], focal_x=fx, focal_y=fy, center_x=cx, center_y=cy)
+
+    intrinsics = []
+    videopaths = []
+    poses = []
+
+    
+
+    for dir_path in dir_paths:
+
+        c2w= os.path.join(datadir, dir_path, "c2w_centered.npy")
+        intrinsic = os.path.join(datadir, dir_path, "K_syncnerf.npy")
+        video_path = os.path.join(datadir, dir_path, "video_frames.mp4")
+        img_dim_path = os.path.join(datadir, dir_path, "image_dims.npy")
+
+        videopaths.append(video_path)
+        K = np.load(intrinsic)
+
+        fx = K[0, 0]
+        fy = K[1, 1]
+        cx = K[0, 2]
+        cy = K[1, 2]
+
+        dim = np.load(img_dim_path)
+
+        intrinsics.append(Intrinsics(height=dim[1], width=dim[0], focal_x=fx, focal_y=fy, center_x=cx, center_y=cy))
+        poses.append(np.load(c2w))
+
+    poses = np.stack(poses)
+
+    poses = poses[:,0]
+
+    
+
+
+    videopaths = np.array(videopaths)  # [n_cameras]
+    assert poses.shape[0] == len(videopaths), \
+        'Mismatch between number of cameras and number of poses!'
+    videopaths.sort()
+    cam_nums = len(videopaths)
+    if split == 'train':
+        # split_ids = np.arange(poses.shape[0])
+        split_ids = np.arange(1, poses.shape[0])
+    elif split == 'test':
+        split_ids = np.array([hold_id])
+    else:
+        split_ids = np.arange(poses.shape[0])
+
+    poses = torch.from_numpy(poses[split_ids])
+    videopaths = videopaths[split_ids].tolist()
+
+    return poses, intrinsics, videopaths, cam_nums
 
 def load_blendervideo_poses(datadir: str,
                          downsample: float,
@@ -634,6 +762,8 @@ def load_blendervideo_poses(datadir: str,
     videopaths = videopaths[split_ids].tolist()
 
     return poses, intrinsics, videopaths, cam_nums
+
+
 def load_blendervideo_poses_testoptim(datadir: str,
                          downsample: float,
                          split: str,

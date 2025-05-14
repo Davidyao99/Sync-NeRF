@@ -60,6 +60,7 @@ def main():
     p.add_argument('--config-path', type=str, required=True)
     p.add_argument('--log-dir', type=str, default=None)
     p.add_argument('--seed', type=int, default=0)
+    p.add_argument('--video', type=str, default=None)
     p.add_argument('override', nargs=argparse.REMAINDER)
 
     args = p.parse_args()
@@ -73,6 +74,10 @@ def main():
     cfg = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(cfg)
     config: Dict[str, Any] = cfg.config
+    config["video"] = args.video
+
+    if args.video is not None:
+        config["expname"] = config["expname"] + "_" + args.video
     # Process overrides from argparse into config
     # overrides can be passed from the command line as key=value pairs. E.g.
     # python plenoxels/main.py --config-path plenoxels/config/cfg.py max_ts_frames=200
@@ -106,10 +111,10 @@ def main():
     data = load_data(model_type, validate_only=validate_only, render_only=render_only or spacetime_only, **config)
     config.update(data)
     trainer = init_trainer(model_type, **config)
-    if args.log_dir is not None:
-        checkpoint_path = os.path.join(args.log_dir, "model.pth")
-        training_needed = not (validate_only or render_only or spacetime_only)
-        trainer.load_model(torch.load(checkpoint_path), training_needed=training_needed)
+    # if render_only is not None:
+    #     checkpoint_path = os.path.join(config["logdir"], config["expname"], "model.pth")
+    #     training_needed = not (validate_only or render_only or spacetime_only)
+    #     trainer.load_model(torch.load(checkpoint_path), training_needed=training_needed)
 
     if validate_only:
         trainer.validate()

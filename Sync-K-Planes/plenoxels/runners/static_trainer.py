@@ -174,7 +174,7 @@ def init_tr_data(data_downsample: float, data_dirs: Sequence[str], **kwargs):
     dset.reset_iter()
 
     tr_loader = torch.utils.data.DataLoader(
-        dset, num_workers=4, prefetch_factor=4, pin_memory=True,
+        dset, num_workers=0, prefetch_factor=0, pin_memory=True,
         batch_size=None, worker_init_fn=init_dloader_random)
 
     return {

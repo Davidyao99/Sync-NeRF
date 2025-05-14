@@ -21,15 +21,15 @@ def render_to_path(trainer: Union[VideoTrainer, StaticTrainer], extra_name: str 
     """
     dataset = trainer.test_dataset
 
-    pb = tqdm(total=100, desc=f"Rendering scene")
+    pb = tqdm(total=300, desc=f"Rendering scene")
     frames = []
     for img_idx, data in enumerate(dataset):
         ts_render = trainer.eval_step(data)
 
-        if isinstance(dataset.img_h, int):
-            img_h, img_w = dataset.img_h, dataset.img_w
-        else:
-            img_h, img_w = dataset.img_h[img_idx], dataset.img_w[img_idx]
+        # if isinstance(dataset.img_h, int):
+        img_h, img_w = dataset.img_h, dataset.img_w
+        # else:
+        #     img_h, img_w = dataset.img_h[img_idx], dataset.img_w[img_idx]
         preds_rgb = (
             ts_render["rgb"]
             .reshape(img_h, img_w, 3)

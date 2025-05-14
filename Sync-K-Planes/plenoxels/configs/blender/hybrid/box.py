@@ -4,7 +4,7 @@ config = {
  'device': 'cuda:0',
 
  'data_downsample': 1.0,
- 'data_dirs': ['/root/hdd/bbangsik/seoha/synthetic/synthetic_unsync_all/box'],
+ 'data_dirs': ['/home/dyyao2/Documents/campuscluster/personals/david/Sync-NeRF/blender_unsync/box'],
  'contract': False,
  'ndc': False,
  'isg': False,

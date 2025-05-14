@@ -1,10 +1,10 @@
 config = {
  'expname': 'deer_unsync_hybrid',
- 'logdir': './logs',
+ 'logdir': '/home/dyyao2/Documents/campuscluster/datasets/egohumans/syncnerf_results/',
  'device': 'cuda:0',
 
  'data_downsample': 1.0,
- 'data_dirs': ['/home/vilab/dynamic/synthetic_v4/synthetic_unsync_all/deer'],
+ 'data_dirs': ['/home/dyyao2/Documents/campuscluster/personals/david/Sync-NeRF/blender_unsync/deer'],
  'contract': False,
  'ndc': False,
  'isg': False,
@@ -14,7 +14,7 @@ config = {
  'scene_bbox': [[-1.3, -1.3, -1.3], [1.3, 1.3, 1.3]],
 
  # Optimization settings
- 'num_steps': 90001,
+ 'num_steps': 50001,
  'batch_size': 4096,
  'scheduler_type': 'warmup_cosine',
  'optim_type': 'adam',
@@ -28,7 +28,6 @@ config = {
  'l1_offset': True,
  'l1_offset_gamma': 0.0001,
 
-
  # Regularization
  'distortion_loss_weight': 0.00,
  'histogram_loss_weight': 1.0,
@@ -41,8 +40,8 @@ config = {
  'density_l1': 0.0001,
 
  # Training settings
- 'save_every': 90000,
- 'valid_every': 90000,
+ 'save_every': 50000,
+ 'valid_every': 50000,
  'save_outputs': True,
  'train_fp16': True,
 

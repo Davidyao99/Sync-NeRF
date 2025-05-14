@@ -278,7 +278,8 @@ def init_tr_data(data_downsample, data_dir, split, **kwargs):
         near_scaling=float(kwargs.get('near_scaling', 0)), ndc_far=float(kwargs.get('ndc_far', 0)),
         scene_bbox=kwargs['scene_bbox'],
         normalize_scale = kwargs.get('normalize_scale', False),
-        num_frames = kwargs.get('num_frames', False)
+        num_frames = kwargs.get('num_frames', False),
+        video = kwargs.get('video', False),
     )
     if ist:
         tr_dset.switch_isg2ist()  # this should only happen in case we're reloading
@@ -286,10 +287,10 @@ def init_tr_data(data_downsample, data_dir, split, **kwargs):
     g = torch.Generator()
     g.manual_seed(0)
     tr_loader = torch.utils.data.DataLoader(
-        tr_dset, batch_size=None, num_workers=4,  prefetch_factor=4, pin_memory=True,
+        # tr_dset, batch_size=None, num_workers=3,  prefetch_factor=3, pin_memory=True,
+        tr_dset, batch_size=None, num_workers=0, pin_memory=True,
         worker_init_fn=init_dloader_random, generator=g)
     return {"tr_loader": tr_loader, "tr_dset": tr_dset}
-
 
 def init_ts_data(data_downsample,data_dir, split, hold_id=0, **kwargs):
     ts_dset = Video360Dataset(
@@ -300,7 +301,8 @@ def init_ts_data(data_downsample,data_dir, split, hold_id=0, **kwargs):
         hold_id=hold_id,
         scene_bbox=kwargs['scene_bbox'],
         normalize_scale = kwargs.get('normalize_scale', False),
-        num_frames = kwargs.get('num_frames', False)
+        num_frames = kwargs.get('num_frames', False),
+        video = kwargs.get('video', False),
     )
     return {"ts_dset": ts_dset}
 
