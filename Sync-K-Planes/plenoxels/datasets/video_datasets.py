@@ -200,7 +200,7 @@ class Video360Dataset(BaseDataset):
                 self.cam_nums = cam_nums
                 self.per_cam_near_fars = torch.tensor(
                         # [[2.0, 6.0]]).repeat(per_cam_poses.shape[0], 1)
-                        [[0.4, 6.0]]).repeat(per_cam_poses.shape[0], 1)
+                        [[0.3, 6.0]]).repeat(per_cam_poses.shape[0], 1)
             # Normalize timestamps between -1, 1
             self.num_frames = torch.max(timestamps).item() + 1
             print(f"Number of frames: {self.num_frames}")
@@ -602,7 +602,7 @@ def load_llffvideo_data(videopaths: List[str],
     # Stack everything together
     timestamps = torch.cat(timestamps, 0)  # [N]
     poses = torch.cat(poses, 0)            # [N, 3, 4]
-    imgs = torch.cat(imgs, 0)              # [N, h, w, 3]
+    imgs = torch.cat(imgs, 0)              # [N, h, w, 3] 
     median_imgs = torch.stack(median_imgs, 0)  # [num_cameras, h, w, 3]
 
     return poses, imgs, timestamps, median_imgs
