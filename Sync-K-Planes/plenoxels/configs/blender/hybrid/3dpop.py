@@ -1,7 +1,7 @@
 config = {
 #  'expname': 'panoptic',
  'expname': '3dpop',
- 'logdir': '/home/dyyao2/Documents/campuscluster/datasets/egohumans/syncnerf_results/',
+ 'logdir': '/home/dyyao2/Documents/campuscluster/datasets/egohumans/syncnerf_resultsv2/',
  'device': 'cuda:0',
 
  # Run first for 1 step with data_downsample=4 to generate weights for ray importance sampling

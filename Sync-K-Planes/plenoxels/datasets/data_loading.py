@@ -93,10 +93,10 @@ def _parallel_loader_nerf_image_pose(args):
 def _load_video_1cam(idx: int,
                      paths: List[str],
                      poses: torch.Tensor,
-                     out_h: int,
-                     out_w: int,
+                     img_sizes,
                      load_every: int = 1
                      ):  # -> Tuple[List[torch.Tensor], torch.Tensor, List[int]]:
+    out_w, out_h = img_sizes[idx]
     filters = [
         ("scale", f"w={out_w}:h={out_h}")
     ]

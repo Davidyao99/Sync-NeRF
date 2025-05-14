@@ -44,8 +44,8 @@ def stack_camera_dirs(x: torch.Tensor, y: torch.Tensor, intrinsics: Intrinsics, 
     x = x.float()
     y = y.float()
     return torch.stack([
-        (x - intrinsics.center_x) / intrinsics.focal_x,
-        (y - intrinsics.center_y) / intrinsics.focal_y
+        (x - intrinsics[:,0,2]) / intrinsics[:,0,0],
+        (y - intrinsics[:,1,2]) / intrinsics[:,1,1]
         * (-1.0 if opengl_camera else 1.0),
         torch.full_like(x, fill_value=-1.0 if opengl_camera else 1.0)
     ], -1)  # (H, W, 3)

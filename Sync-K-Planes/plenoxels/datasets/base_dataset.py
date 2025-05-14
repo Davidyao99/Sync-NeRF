@@ -18,6 +18,7 @@ class BaseDataset(Dataset, ABC):
                  rays_o: Optional[torch.Tensor],
                  rays_d: Optional[torch.Tensor],
                  intrinsics: Union[Intrinsics, List[Intrinsics]],
+                 img_sizes,
                  batch_size: Optional[int] = None,
                  imgs: Optional[Union[torch.Tensor, List[torch.Tensor]]] = None,
                  sampling_weights: Optional[torch.Tensor] = None,
@@ -31,6 +32,7 @@ class BaseDataset(Dataset, ABC):
         self.is_contracted = is_contracted
         self.weights_subsampled = weights_subsampled
         self.batch_size = batch_size
+        self.img_sizes = img_sizes
         if self.split in ['train', 'test_optim']:
             assert self.batch_size is not None
         self.rays_o = rays_o
@@ -58,15 +60,23 @@ class BaseDataset(Dataset, ABC):
 
     @property
     def img_h(self) -> Union[int, List[int]]:
-        if isinstance(self.intrinsics, list):
-            return [i.height for i in self.intrinsics]
-        return self.intrinsics.height
+        return int(self.img_sizes[0][1])
 
     @property
     def img_w(self) -> Union[int, List[int]]:
-        if isinstance(self.intrinsics, list):
-            return [i.width for i in self.intrinsics]
-        return self.intrinsics.width
+        return int(self.img_sizes[0][0])
+
+    # @property
+    # def img_h(self) -> Union[int, List[int]]:
+    #     if isinstance(self.intrinsics, list):
+    #         return [i.height for i in self.intrinsics]
+    #     return self.intrinsics.height
+
+    # @property
+    # def img_w(self) -> Union[int, List[int]]:
+    #     if isinstance(self.intrinsics, list):
+    #         return [i.width for i in self.intrinsics]
+    #     return self.intrinsics.width
 
     def reset_iter(self):
         if self.sampling_weights is None and self.use_permutation:

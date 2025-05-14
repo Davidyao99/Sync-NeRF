@@ -1,14 +1,14 @@
 config = {
- 'expname': 'aligned_train2',
+ 'expname': 'panoptic',
 #  'expname': '3dpop',
 #  'expname': 'blender', 
- 'logdir': '/home/dyyao2/Documents/campuscluster/datasets/egohumans/syncnerf_results/',
+ 'logdir': '/home/dyyao2/Documents/campuscluster/datasets/egohumans/syncnerf_resultsv2/',
  'device': 'cuda:0',
 
  # Run first for 1 step with data_downsample=4 to generate weights for ray importance sampling
  'data_downsample': 1.0,
 #  'data_dirs': ['/home/dyyao2/Documents/campuscluster/datasets/egohumans/3dpop/data_preprocessed'],
- 'data_dirs': ['/home/dyyao2/Documents/campuscluster/datasets/panoptic-toolbox/data_preprocessed_aligned'],
+ 'data_dirs': ['/home/dyyao2/Documents/campuscluster/datasets/panoptic-toolbox/data_preprocessed'],
 #  'data_dirs': ['/home/dyyao2/Documents/campuscluster/personals/david/Sync-NeRF/data_preprocessed/'],
  'contract': False,
  'ndc': False,
@@ -47,7 +47,7 @@ config = {
 
  # Training settings
  'save_every': 50000,
- 'valid_every': 10000,
+ 'valid_every': 50000,
  'save_outputs': True,
  'train_fp16': True,
 
